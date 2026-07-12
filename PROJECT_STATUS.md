@@ -59,10 +59,11 @@ Stack: Spring Boot (Java) + React 19 (Vite, Redux Toolkit, Tailwind). PostgreSQL
 > ```
 > `.env` gotcha: keep DB credentials in `DB_USERNAME`/`DB_PASSWORD` (NOT inside the JDBC URL — the driver rejects `user:pass@host`). Use LF line endings.
 
-### Phase C — Real Payments (test mode)
-- [ ] Integrate a payment gateway in TEST mode (Razorpay recommended for India, or Stripe).
-- [ ] Backend: create payment order endpoint + verify signature webhook; only mark order `PAID` after real confirmation.
-- [ ] Frontend: checkout opens the gateway; on success, redirect to confirmation.
+### Phase C — Real Payments (test mode) — Razorpay
+- [x] Integrate Razorpay SDK (test mode). Config via `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` env vars.
+- [x] Backend: `POST /api/v1/payments/order` (creates Razorpay order for cart total) + `POST /api/v1/payments/verify` (verifies HMAC signature, then places order). Order stores `razorpay_order_id`/`razorpay_payment_id` (migration V6). Stock only decremented after verified payment.
+- [x] Frontend: checkout opens the Razorpay popup; on success it verifies server-side, then redirects to confirmation.
+- [ ] LIVE VERIFY (needs user's test keys in `backend/.env`): run a full test-card checkout end-to-end and confirm the order is marked PAID only after real verification.
 
 ### Phase D — Realtime layer (the headline feature)
 - [ ] Add Spring WebSocket (STOMP) config.
@@ -83,6 +84,7 @@ Stack: Spring Boot (Java) + React 19 (Vite, Redux Toolkit, Tailwind). PostgreSQL
 ---
 
 ## 4. Change Log (newest first — agent appends one line per task)
+- 2026-07-12: Phase C (code) — Razorpay two-step payment: backend /payments/order + /payments/verify (HMAC signature check), Order stores razorpay refs (V6), checkout refactored so stock/order only happen after verified payment; frontend opens Razorpay popup then verifies. Backend + frontend compile. Pending live test with real test keys.
 - 2026-07-12: Phase B VERIFIED — app runs on Neon PostgreSQL, all 5 migrations applied, data persists across restart (confirmed via API). Fixed broken ProductServiceImplTest; full suite green 10/10.
 - 2026-07-12: Phase B (config) — added `prod` PostgreSQL profile (env-var driven), made active profile overridable via SPRING_PROFILES_ACTIVE, added `.env.example`. Migrations already Postgres-native. Pending: connect a real Postgres DB and verify persistence.
 - 2026-07-12: Phase A complete — fixed checkout (real variant price, stock decrement + insufficient-stock guard), linked CartItem/OrderItem → ProductVariant (migration V5), seeded real variants with price+stock, added .gitignore + untracked target/. Clean-compiled with JDK 21.

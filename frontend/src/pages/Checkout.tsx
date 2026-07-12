@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { clearCart } from '../features/cart/cartSlice';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
-import api from '../utils/axios';
+import { createPaymentOrder, verifyPayment, loadRazorpayScript } from '../api/payments';
 import { CheckCircle, Lock, CreditCard } from 'lucide-react';
 
 const Checkout: React.FC = () => {
@@ -49,19 +49,57 @@ const Checkout: React.FC = () => {
     const fullAddress = `${address}, ${city}, ${zip}`;
 
     try {
-      const response = await api.post('/checkout', {
-        shippingAddress: fullAddress,
-        paymentMethod
-      });
-      
-      if (response.data.success) {
-        // Clear local Redux cart
-        dispatch(clearCart());
-        // Navigate to Order Confirmation
-        navigate(`/order-confirmation/${response.data.data.orderNumber}`);
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        throw new Error('Could not load the payment gateway. Check your connection.');
       }
+
+      // Step 1: backend creates a Razorpay order for the current cart total.
+      const paymentOrder = await createPaymentOrder();
+
+      // Step 2: open the Razorpay popup.
+      const options = {
+        key: paymentOrder.razorpayKeyId,
+        amount: paymentOrder.amount,
+        currency: paymentOrder.currency,
+        name: 'Antigravity Commerce',
+        description: 'Order Payment',
+        order_id: paymentOrder.razorpayOrderId,
+        // Step 3: on success, verify the signature server-side, which places the order.
+        handler: async (response: {
+          razorpay_order_id: string;
+          razorpay_payment_id: string;
+          razorpay_signature: string;
+        }) => {
+          try {
+            const placedOrder = await verifyPayment({
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+              shippingAddress: fullAddress,
+            });
+            dispatch(clearCart());
+            navigate(`/order-confirmation/${placedOrder.orderNumber}`);
+          } catch (err: any) {
+            setError(err.response?.data?.message || 'Payment verification failed');
+            setIsProcessing(false);
+          }
+        },
+        modal: {
+          ondismiss: () => setIsProcessing(false),
+        },
+        prefill: {},
+        theme: { color: '#4f46e5' },
+      };
+
+      const razorpay = new (window as any).Razorpay(options);
+      razorpay.on('payment.failed', (resp: any) => {
+        setError(resp.error?.description || 'Payment failed. Please try again.');
+        setIsProcessing(false);
+      });
+      razorpay.open();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to process checkout');
+      setError(err.response?.data?.message || err.message || 'Failed to start payment');
       setIsProcessing(false);
     }
   };
@@ -129,8 +167,8 @@ const Checkout: React.FC = () => {
                 />
                 <CreditCard className={`w-6 h-6 ${paymentMethod === 'CREDIT_CARD' ? 'text-indigo-600' : 'text-gray-400'}`} />
                 <div className="flex-1">
-                  <p className="font-semibold text-gray-900">Credit Card (Mock)</p>
-                  <p className="text-sm text-gray-500">Fast and secure mock payment</p>
+                  <p className="font-semibold text-gray-900">Razorpay</p>
+                  <p className="text-sm text-gray-500">Cards, UPI &amp; Netbanking (test mode)</p>
                 </div>
               </label>
             </div>

@@ -100,6 +100,13 @@
             <version>2.5.0</version>
         </dependency>
 
+        <!-- Razorpay payment gateway -->
+        <dependency>
+            <groupId>com.razorpay</groupId>
+            <artifactId>razorpay-java</artifactId>
+            <version>1.4.8</version>
+        </dependency>
+
         <!-- H2 for testing and local dev -->
         <dependency>
             <groupId>com.h2database</groupId>

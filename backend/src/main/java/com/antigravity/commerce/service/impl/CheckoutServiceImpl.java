@@ -58,54 +58,86 @@ public class CheckoutServiceImpl implements CheckoutService {
                         "Product '" + item.getProduct().getName() + "' has no purchasable variant"));
     }
 
-    @Override
-    @Transactional
-    public OrderDto processCheckout(CheckoutRequest request) {
-        User user = getCurrentUser();
+    private Cart getNonEmptyCart(User user) {
         Cart cart = cartRepository.findByUser(user)
                 .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
-
         if (cart.getItems().isEmpty()) {
-            throw new IllegalStateException("Cannot checkout an empty cart");
+            throw new BadRequestException("Cannot checkout an empty cart");
         }
+        return cart;
+    }
 
-        // 1. Resolve each line to its chosen variant, verify stock, and compute totals.
+    /** Single source of truth for order money: subtotal + 10% tax + shipping (free over 100). */
+    private BigDecimal computeGrandTotal(Cart cart) {
+        BigDecimal subTotal = computeSubTotal(cart);
+        BigDecimal taxTotal = subTotal.multiply(BigDecimal.valueOf(0.1));
+        BigDecimal shippingTotal = subTotal.compareTo(BigDecimal.valueOf(100)) > 0
+                ? BigDecimal.ZERO : BigDecimal.valueOf(10.00);
+        return subTotal.add(taxTotal).add(shippingTotal);
+    }
+
+    private BigDecimal computeSubTotal(Cart cart) {
         BigDecimal subTotal = BigDecimal.ZERO;
         for (CartItem item : cart.getItems()) {
             ProductVariant variant = resolveVariant(item);
-            int requested = item.getQuantity();
-            if (!Boolean.TRUE.equals(variant.getAllowBackorder()) && variant.getStockQuantity() < requested) {
-                throw new BadRequestException("Insufficient stock for " + item.getProduct().getName()
-                        + " (available: " + variant.getStockQuantity() + ", requested: " + requested + ")");
-            }
-            subTotal = subTotal.add(variant.getPrice().multiply(BigDecimal.valueOf(requested)));
+            subTotal = subTotal.add(variant.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
         }
+        return subTotal;
+    }
 
-        BigDecimal taxTotal = subTotal.multiply(BigDecimal.valueOf(0.1)); // Flat 10% tax for mockup
-        BigDecimal shippingTotal = subTotal.compareTo(BigDecimal.valueOf(100)) > 0 ? BigDecimal.ZERO : BigDecimal.valueOf(10.00); // Free shipping over 100
+    @Override
+    @Transactional(readOnly = true)
+    public BigDecimal calculateGrandTotal() {
+        User user = getCurrentUser();
+        return computeGrandTotal(getNonEmptyCart(user));
+    }
+
+    @Override
+    @Transactional
+    public OrderDto processCheckout(CheckoutRequest request) {
+        // Legacy path: place the order without a real payment reference.
+        return placeOrder(request.getShippingAddress(), null, null);
+    }
+
+    @Override
+    @Transactional
+    public OrderDto placeOrder(String shippingAddress, String razorpayOrderId, String razorpayPaymentId) {
+        User user = getCurrentUser();
+        Cart cart = getNonEmptyCart(user);
+
+        BigDecimal subTotal = computeSubTotal(cart);
+        BigDecimal taxTotal = subTotal.multiply(BigDecimal.valueOf(0.1));
+        BigDecimal shippingTotal = subTotal.compareTo(BigDecimal.valueOf(100)) > 0
+                ? BigDecimal.ZERO : BigDecimal.valueOf(10.00);
         BigDecimal grandTotal = subTotal.add(taxTotal).add(shippingTotal);
 
-        // 2. Create Order
-        // NOTE: payment is still mocked as PAID here. Real gateway confirmation is Phase C in PROJECT_STATUS.md.
         Order order = Order.builder()
                 .user(user)
                 .orderNumber("ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
-                .status("PAID") // Assuming mock payment succeeds instantly
+                .status("PAID")
                 .subTotal(subTotal)
                 .taxTotal(taxTotal)
                 .shippingTotal(shippingTotal)
                 .grandTotal(grandTotal)
-                .shippingAddress(request.getShippingAddress())
+                .shippingAddress(shippingAddress)
                 .paymentStatus("PAID")
+                .razorpayOrderId(razorpayOrderId)
+                .razorpayPaymentId(razorpayPaymentId)
                 .build();
 
-        // 3. Create order items and decrement stock now that we know every line has enough.
+        // Verify stock, then create order items and decrement stock in the same transaction.
         List<OrderItem> orderItems = new ArrayList<>();
         for (CartItem cartItem : cart.getItems()) {
             ProductVariant variant = resolveVariant(cartItem);
             Product product = cartItem.getProduct();
+            int requested = cartItem.getQuantity();
 
-            variant.setStockQuantity(variant.getStockQuantity() - cartItem.getQuantity());
+            if (!Boolean.TRUE.equals(variant.getAllowBackorder()) && variant.getStockQuantity() < requested) {
+                throw new BadRequestException("Insufficient stock for " + product.getName()
+                        + " (available: " + variant.getStockQuantity() + ", requested: " + requested + ")");
+            }
+
+            variant.setStockQuantity(variant.getStockQuantity() - requested);
             productVariantRepository.save(variant);
 
             orderItems.add(OrderItem.builder()
@@ -114,18 +146,18 @@ public class CheckoutServiceImpl implements CheckoutService {
                     .variant(variant)
                     .productName(product.getName())
                     .priceAtPurchase(variant.getPrice())
-                    .quantity(cartItem.getQuantity())
+                    .quantity(requested)
                     .build());
         }
 
         order.setItems(orderItems);
         Order savedOrder = orderRepository.save(order);
 
-        // 4. Empty the Cart
         cart.getItems().clear();
         cartRepository.save(cart);
 
-        log.info("Successfully processed checkout for user {} - Order {}", user.getEmail(), savedOrder.getOrderNumber());
+        log.info("Placed order {} for user {} (razorpayPaymentId={})",
+                savedOrder.getOrderNumber(), user.getEmail(), razorpayPaymentId);
 
         return orderMapper.toDto(savedOrder);
     }

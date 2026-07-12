@@ -67,6 +67,12 @@ public class Order extends BaseEntity {
     @Column(name = "payment_status", nullable = false)
     private String paymentStatus = "PENDING";
 
+    @Column(name = "razorpay_order_id")
+    private String razorpayOrderId;
+
+    @Column(name = "razorpay_payment_id")
+    private String razorpayPaymentId;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<OrderItem> items = new ArrayList<>();
