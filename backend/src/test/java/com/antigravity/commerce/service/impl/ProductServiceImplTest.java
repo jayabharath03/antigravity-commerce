@@ -134,7 +134,7 @@ class ProductServiceImplTest {
         when(productRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(productPage);
         when(productMapper.toDto(product)).thenReturn(productDto);
 
-        Page<ProductDto> result = productService.searchProducts("iphone", category.getId(), brand.getId(), pageable);
+        Page<ProductDto> result = productService.searchProducts("iphone", "electronics", "apple", null, null, pageable);
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());

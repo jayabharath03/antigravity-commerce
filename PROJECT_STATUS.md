@@ -47,8 +47,17 @@ Stack: Spring Boot (Java) + React 19 (Vite, Redux Toolkit, Tailwind). PostgreSQL
 
 ### Phase B — Real Database (persistence)
 - [x] Add PostgreSQL dependency + `application-prod.yml` with env-var config. (Driver + flyway-postgres were already in pom; added the `prod` profile + `SPRING_PROFILES_ACTIVE` override + `.env.example`.)
-- [ ] Point `prod` profile at a free cloud Postgres (Neon recommended) and confirm Flyway migrates all 5 versions cleanly.  ← NEEDS USER: create DB + provide connection string.
-- [ ] Verify data survives a backend restart (register a user / place an order, restart, confirm it's still there).
+- [x] Point `prod` profile at a free cloud Postgres (Neon) — Flyway applied all 5 migrations cleanly.
+- [x] Verified data survives a backend restart (restart → "No migration necessary", seeder skipped, products still served).
+- [x] Fixed a pre-existing broken unit test (`ProductServiceImplTest.searchProducts` used an outdated signature). Full suite now green: 10/10.
+
+> HOW TO RUN WITH POSTGRES (prod profile), from `backend/`:
+> ```bash
+> export JAVA_HOME="/d/Java Softwares/jdk-21.0.10"
+> while IFS='=' read -r k v; do [ -n "$k" ] && export "$k=$v"; done < <(sed 's/\r$//' .env | grep -vE '^\s*#|^\s*$')
+> mvn -Dmaven.test.skip=true spring-boot:run
+> ```
+> `.env` gotcha: keep DB credentials in `DB_USERNAME`/`DB_PASSWORD` (NOT inside the JDBC URL — the driver rejects `user:pass@host`). Use LF line endings.
 
 ### Phase C — Real Payments (test mode)
 - [ ] Integrate a payment gateway in TEST mode (Razorpay recommended for India, or Stripe).
@@ -74,6 +83,7 @@ Stack: Spring Boot (Java) + React 19 (Vite, Redux Toolkit, Tailwind). PostgreSQL
 ---
 
 ## 4. Change Log (newest first — agent appends one line per task)
+- 2026-07-12: Phase B VERIFIED — app runs on Neon PostgreSQL, all 5 migrations applied, data persists across restart (confirmed via API). Fixed broken ProductServiceImplTest; full suite green 10/10.
 - 2026-07-12: Phase B (config) — added `prod` PostgreSQL profile (env-var driven), made active profile overridable via SPRING_PROFILES_ACTIVE, added `.env.example`. Migrations already Postgres-native. Pending: connect a real Postgres DB and verify persistence.
 - 2026-07-12: Phase A complete — fixed checkout (real variant price, stock decrement + insufficient-stock guard), linked CartItem/OrderItem → ProductVariant (migration V5), seeded real variants with price+stock, added .gitignore + untracked target/. Clean-compiled with JDK 21.
 - 2026-07-12: Plan file created; project audited.
