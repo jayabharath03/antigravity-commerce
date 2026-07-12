@@ -1,6 +1,6 @@
 spring:
   profiles:
-    active: dev
+    active: ${SPRING_PROFILES_ACTIVE:dev} # defaults to H2 dev; set SPRING_PROFILES_ACTIVE=prod for PostgreSQL
   application:
     name: antigravity-commerce
 

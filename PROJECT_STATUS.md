@@ -46,9 +46,9 @@ Stack: Spring Boot (Java) + React 19 (Vite, Redux Toolkit, Tailwind). PostgreSQL
 > (the default `JAVA_HOME` on this machine points to JDK 8, which cannot build this project).
 
 ### Phase B — Real Database (persistence)
-- [ ] Add PostgreSQL dependency + `application-prod.yml` with env-var config.
-- [ ] Run Postgres locally via Docker (`docker run postgres`) and confirm Flyway migrates cleanly against it.
-- [ ] Verify data survives a backend restart.
+- [x] Add PostgreSQL dependency + `application-prod.yml` with env-var config. (Driver + flyway-postgres were already in pom; added the `prod` profile + `SPRING_PROFILES_ACTIVE` override + `.env.example`.)
+- [ ] Point `prod` profile at a free cloud Postgres (Neon recommended) and confirm Flyway migrates all 5 versions cleanly.  ← NEEDS USER: create DB + provide connection string.
+- [ ] Verify data survives a backend restart (register a user / place an order, restart, confirm it's still there).
 
 ### Phase C — Real Payments (test mode)
 - [ ] Integrate a payment gateway in TEST mode (Razorpay recommended for India, or Stripe).
@@ -74,5 +74,6 @@ Stack: Spring Boot (Java) + React 19 (Vite, Redux Toolkit, Tailwind). PostgreSQL
 ---
 
 ## 4. Change Log (newest first — agent appends one line per task)
+- 2026-07-12: Phase B (config) — added `prod` PostgreSQL profile (env-var driven), made active profile overridable via SPRING_PROFILES_ACTIVE, added `.env.example`. Migrations already Postgres-native. Pending: connect a real Postgres DB and verify persistence.
 - 2026-07-12: Phase A complete — fixed checkout (real variant price, stock decrement + insufficient-stock guard), linked CartItem/OrderItem → ProductVariant (migration V5), seeded real variants with price+stock, added .gitignore + untracked target/. Clean-compiled with JDK 21.
 - 2026-07-12: Plan file created; project audited.
