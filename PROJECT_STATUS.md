@@ -22,23 +22,28 @@ Stack: Spring Boot (Java) + React 19 (Vite, Redux Toolkit, Tailwind). PostgreSQL
 - Backend: layered Spring Boot (entity/repo/dto/mapper/service/controller), JWT auth, Flyway V1–V4, catalog+variants, cart, checkout, orders, reviews, Swagger, Supabase storage. Solid.
 - Frontend: React 19 + Redux Toolkit + Tailwind. Auth, catalog, product details, cart, checkout, orders, admin products/orders.
 - **KNOWN GAPS / BUGS:**
-  - [ ] Payment is fake — every order is instantly `PAID` (`CheckoutServiceImpl` line ~79).
-  - [ ] Stock is never decremented on checkout (`CheckoutServiceImpl` line ~88).
-  - [ ] Checkout uses `variants.stream().findFirst()` — ignores the variant the customer chose (line ~59).
-  - [ ] Database is H2 in-memory — all data wiped on restart. Needs PostgreSQL.
-  - [ ] No realtime layer (no WebSocket/SSE).
-  - [ ] Not in git — no commits, no history.
+  - [ ] Payment is still fake — every order is instantly `PAID` (Phase C fixes this).
+  - [x] Stock is now decremented on checkout, and checkout is rejected if stock is insufficient.
+  - [x] Checkout now uses the chosen variant's real price (not `findFirst`).
+  - [x] Seed data now creates real variants with price + stock (was empty before).
+  - [ ] Database is H2 in-memory — all data wiped on restart. Needs PostgreSQL (Phase B).
+  - [ ] No realtime layer (no WebSocket/SSE) (Phase D).
+  - [x] Now in git with a clean per-task history + `.gitignore`.
 
 ---
 
 ## 3. ROADMAP (do these top to bottom)
 
 ### Phase A — Foundation & Discipline
-- [ ] Initialize git for this project and make the first commit of the current working code.
-- [ ] Add a `.gitignore` (Java `target/`, node `node_modules/`, `.env`, IDE files).
-- [ ] Fix checkout bug: use the actual chosen variant's price, not `findFirst()`.
-- [ ] Fix checkout bug: decrement `ProductVariant.stockQuantity` inside the transaction; reject if insufficient stock.
-- [ ] Add cart-item → variant link so the customer's chosen variant flows through to the order.
+- [x] Initialize git for this project and make the first commit of the current working code.
+- [x] Add a `.gitignore` (Java `target/`, node `node_modules/`, `.env`, IDE files).
+- [x] Fix checkout bug: use the actual chosen variant's price, not `findFirst()`.
+- [x] Fix checkout bug: decrement `ProductVariant.stockQuantity` inside the transaction; reject if insufficient stock.
+- [x] Add cart-item → variant link so the customer's chosen variant flows through to the order.
+- [x] Seed real product variants (price + stock) so the storefront actually has prices.
+
+> NOTE: terminal builds need JDK 21. Set `JAVA_HOME` to `D:\Java Softwares\jdk-21.0.10` before running `mvn`
+> (the default `JAVA_HOME` on this machine points to JDK 8, which cannot build this project).
 
 ### Phase B — Real Database (persistence)
 - [ ] Add PostgreSQL dependency + `application-prod.yml` with env-var config.
@@ -69,4 +74,5 @@ Stack: Spring Boot (Java) + React 19 (Vite, Redux Toolkit, Tailwind). PostgreSQL
 ---
 
 ## 4. Change Log (newest first — agent appends one line per task)
+- 2026-07-12: Phase A complete — fixed checkout (real variant price, stock decrement + insufficient-stock guard), linked CartItem/OrderItem → ProductVariant (migration V5), seeded real variants with price+stock, added .gitignore + untracked target/. Clean-compiled with JDK 21.
 - 2026-07-12: Plan file created; project audited.

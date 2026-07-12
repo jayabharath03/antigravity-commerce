@@ -1,0 +1,32 @@
+# ===== Java / Maven (backend) =====
+target/
+*.class
+*.jar
+*.war
+
+# ===== Node / Vite (frontend) =====
+node_modules/
+dist/
+.vite/
+
+# ===== Environment & secrets =====
+.env
+.env.*
+*.local
+
+# ===== IDE / editor =====
+.idea/
+*.iml
+.vscode/
+# Eclipse / STS
+.settings/
+.classpath
+.project
+.factorypath
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== Logs =====
+*.log

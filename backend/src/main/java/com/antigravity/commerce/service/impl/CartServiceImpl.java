@@ -5,11 +5,14 @@ import com.antigravity.commerce.dto.CartRequest;
 import com.antigravity.commerce.entity.Cart;
 import com.antigravity.commerce.entity.CartItem;
 import com.antigravity.commerce.entity.Product;
+import com.antigravity.commerce.entity.ProductVariant;
 import com.antigravity.commerce.entity.User;
+import com.antigravity.commerce.exception.BadRequestException;
 import com.antigravity.commerce.exception.ResourceNotFoundException;
 import com.antigravity.commerce.mapper.CartMapper;
 import com.antigravity.commerce.repository.CartRepository;
 import com.antigravity.commerce.repository.ProductRepository;
+import com.antigravity.commerce.repository.ProductVariantRepository;
 import com.antigravity.commerce.repository.UserRepository;
 import com.antigravity.commerce.service.CartService;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +29,7 @@ public class CartServiceImpl implements CartService {
 
     private final CartRepository cartRepository;
     private final ProductRepository productRepository;
+    private final ProductVariantRepository productVariantRepository;
     private final UserRepository userRepository;
     private final CartMapper cartMapper;
 
@@ -60,8 +64,12 @@ public class CartServiceImpl implements CartService {
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
+        ProductVariant variant = resolveVariant(product, request.getVariantId());
+
+        // Same product AND same variant = same cart line; different variants stay separate.
         Optional<CartItem> existingItem = cart.getItems().stream()
-                .filter(item -> item.getProduct().getId().equals(product.getId()))
+                .filter(item -> item.getProduct().getId().equals(product.getId())
+                        && sameVariant(item.getVariant(), variant))
                 .findFirst();
 
         if (existingItem.isPresent()) {
@@ -70,6 +78,7 @@ public class CartServiceImpl implements CartService {
             CartItem newItem = CartItem.builder()
                     .cart(cart)
                     .product(product)
+                    .variant(variant)
                     .quantity(request.getQuantity())
                     .build();
             cart.getItems().add(newItem);
@@ -77,6 +86,29 @@ public class CartServiceImpl implements CartService {
 
         Cart savedCart = cartRepository.save(cart);
         return cartMapper.toDto(savedCart);
+    }
+
+    /**
+     * Resolve which variant the customer is buying. If a variantId is supplied it must belong to
+     * the product; otherwise fall back to the product's first (default) variant.
+     */
+    private ProductVariant resolveVariant(Product product, UUID variantId) {
+        if (variantId != null) {
+            ProductVariant variant = productVariantRepository.findById(variantId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Variant not found"));
+            if (!variant.getProduct().getId().equals(product.getId())) {
+                throw new BadRequestException("Variant does not belong to the selected product");
+            }
+            return variant;
+        }
+        return product.getVariants().stream().findFirst().orElse(null);
+    }
+
+    private boolean sameVariant(ProductVariant a, ProductVariant b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        return a.getId().equals(b.getId());
     }
 
     @Override

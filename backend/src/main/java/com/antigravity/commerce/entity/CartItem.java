@@ -42,6 +42,12 @@ public class CartItem {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
+    // The specific variant (size/colour) the customer chose. Price and stock live here.
+    // Nullable for now so older carts and the current single-variant frontend keep working.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "variant_id")
+    private ProductVariant variant;
+
     @Column(nullable = false)
     private Integer quantity;
 

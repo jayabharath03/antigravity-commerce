@@ -40,6 +40,11 @@ public class OrderItem {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
+    // The exact variant purchased (nullable for legacy orders without variant tracking).
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "variant_id")
+    private ProductVariant variant;
+
     // Snapshot of the product name at the time of purchase
     @Column(name = "product_name", nullable = false)
     private String productName;

@@ -4,8 +4,11 @@ import com.antigravity.commerce.entity.Brand;
 import com.antigravity.commerce.entity.Category;
 import com.antigravity.commerce.entity.Product;
 import com.antigravity.commerce.entity.ProductStatus;
+import com.antigravity.commerce.entity.ProductVariant;
 import com.antigravity.commerce.entity.Role;
 import com.antigravity.commerce.entity.User;
+
+import java.math.BigDecimal;
 import com.antigravity.commerce.repository.BrandRepository;
 import com.antigravity.commerce.repository.CategoryRepository;
 import com.antigravity.commerce.repository.ProductRepository;
@@ -87,6 +90,15 @@ public class DatabaseSeeder implements CommandLineRunner {
                     .brand(apple)
                     .status(ProductStatus.ACTIVE)
                     .build();
+            // A product's price and stock live on its variants, so every product needs at least one.
+            ProductVariant v1 = ProductVariant.builder()
+                    .product(p1)
+                    .sku("IPH16-PRO-256")
+                    .price(new BigDecimal("1199.00"))
+                    .stockQuantity(25)
+                    .status(ProductStatus.ACTIVE)
+                    .build();
+            p1.getVariants().add(v1);
             productRepository.save(p1);
 
             Product p2 = Product.builder()
@@ -97,8 +109,16 @@ public class DatabaseSeeder implements CommandLineRunner {
                     .brand(nike)
                     .status(ProductStatus.ACTIVE)
                     .build();
+            ProductVariant v2 = ProductVariant.builder()
+                    .product(p2)
+                    .sku("NIKE-AIRMAX-42")
+                    .price(new BigDecimal("129.99"))
+                    .stockQuantity(3) // low stock, so the "only N left" / out-of-stock flows are easy to demo
+                    .status(ProductStatus.ACTIVE)
+                    .build();
+            p2.getVariants().add(v2);
             productRepository.save(p2);
-            
+
             log.info("Catalog Seeded Successfully!");
         }
     }

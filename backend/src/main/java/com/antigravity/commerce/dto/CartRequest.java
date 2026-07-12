@@ -18,6 +18,9 @@ public class CartRequest {
     @NotNull(message = "Product ID is required")
     private UUID productId;
 
+    // Optional: the specific variant chosen. If omitted, the product's default variant is used.
+    private UUID variantId;
+
     @NotNull(message = "Quantity is required")
     @Min(value = 1, message = "Quantity must be at least 1")
     private Integer quantity;
