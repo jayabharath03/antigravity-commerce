@@ -6,6 +6,7 @@ export interface PaymentOrder {
   amount: number;
   currency: string;
   grandTotal: number;
+  mock: boolean;
 }
 
 export interface VerifyPaymentPayload {

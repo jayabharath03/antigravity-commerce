@@ -20,4 +20,5 @@ public class PaymentOrderResponse {
     private Long amount;              // amount in the smallest currency unit (paise)
     private String currency;          // e.g. INR
     private BigDecimal grandTotal;    // human-readable total for display
+    private boolean mock;             // true when no gateway keys are configured (simulated payment)
 }

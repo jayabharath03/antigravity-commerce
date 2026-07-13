@@ -49,13 +49,31 @@ const Checkout: React.FC = () => {
     const fullAddress = `${address}, ${city}, ${zip}`;
 
     try {
+      // Step 1: backend creates a payment order for the current cart total.
+      const paymentOrder = await createPaymentOrder();
+
+      // Simulated mode (no gateway keys configured): place the order directly, no popup.
+      if (paymentOrder.mock) {
+        try {
+          const placedOrder = await verifyPayment({
+            razorpayOrderId: paymentOrder.razorpayOrderId,
+            razorpayPaymentId: 'MOCK_PAYMENT',
+            razorpaySignature: 'MOCK_SIGNATURE',
+            shippingAddress: fullAddress,
+          });
+          dispatch(clearCart());
+          navigate(`/order-confirmation/${placedOrder.orderNumber}`);
+        } catch (err: any) {
+          setError(err.response?.data?.message || 'Failed to place order');
+          setIsProcessing(false);
+        }
+        return;
+      }
+
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
         throw new Error('Could not load the payment gateway. Check your connection.');
       }
-
-      // Step 1: backend creates a Razorpay order for the current cart total.
-      const paymentOrder = await createPaymentOrder();
 
       // Step 2: open the Razorpay popup.
       const options = {

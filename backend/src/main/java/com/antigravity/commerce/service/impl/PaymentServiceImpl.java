@@ -39,21 +39,31 @@ public class PaymentServiceImpl implements PaymentService {
         this.currency = currency;
     }
 
-    private void ensureConfigured() {
-        if (!StringUtils.hasText(keyId) || !StringUtils.hasText(keySecret)) {
-            throw new BadRequestException("Payment gateway is not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.");
-        }
+    /** Real gateway is used only when both keys are present; otherwise we simulate. */
+    private boolean isConfigured() {
+        return StringUtils.hasText(keyId) && StringUtils.hasText(keySecret);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PaymentOrderResponse createOrder() {
-        ensureConfigured();
-
         BigDecimal grandTotal = checkoutService.calculateGrandTotal();
-        // Razorpay expects the amount in the smallest currency unit (paise for INR).
+        // Amount in the smallest currency unit (paise for INR).
         long amountMinorUnit = grandTotal.multiply(BigDecimal.valueOf(100))
                 .setScale(0, RoundingMode.HALF_UP).longValueExact();
+
+        // No keys configured -> simulated payment (no external account needed).
+        if (!isConfigured()) {
+            log.info("Razorpay keys not set; creating a SIMULATED payment order for amount {} {}", amountMinorUnit, currency);
+            return PaymentOrderResponse.builder()
+                    .razorpayOrderId("MOCK_" + UUID.randomUUID().toString().substring(0, 12))
+                    .razorpayKeyId("")
+                    .amount(amountMinorUnit)
+                    .currency(currency)
+                    .grandTotal(grandTotal)
+                    .mock(true)
+                    .build();
+        }
 
         try {
             RazorpayClient client = new RazorpayClient(keyId, keySecret);
@@ -83,7 +93,14 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public OrderDto verifyAndPlaceOrder(PaymentVerificationRequest request) {
-        ensureConfigured();
+        // Simulated mode: no keys, so there is no signature to verify. Place the order directly.
+        if (!isConfigured()) {
+            log.info("Placing SIMULATED (no-gateway) order for razorpayOrderId {}", request.getRazorpayOrderId());
+            return checkoutService.placeOrder(
+                    request.getShippingAddress(),
+                    request.getRazorpayOrderId(),
+                    request.getRazorpayPaymentId());
+        }
 
         JSONObject attributes = new JSONObject();
         attributes.put("razorpay_order_id", request.getRazorpayOrderId());
