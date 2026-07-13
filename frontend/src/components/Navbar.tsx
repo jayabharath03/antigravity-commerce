@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState, AppDispatch } from '../app/store';
 import { logout } from '../features/auth/authSlice';
-import { ShoppingCart, LogOut, LayoutGrid, ChevronDown } from 'lucide-react';
+import { toggleTheme, isDark } from '../utils/theme';
+import { ShoppingCart, LogOut, LayoutGrid, ChevronDown, Sun, Moon } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const navigate = useNavigate();
@@ -13,6 +14,7 @@ export const Navbar: React.FC = () => {
   const count = items?.reduce((n, i) => n + i.quantity, 0) || 0;
   const isAdmin = user?.roles?.includes('ADMIN');
   const [adminOpen, setAdminOpen] = useState(false);
+  const [dark, setDark] = useState(isDark());
 
   const handleLogout = () => {
     dispatch(logout());
@@ -48,6 +50,15 @@ export const Navbar: React.FC = () => {
               )}
             </div>
           )}
+
+          <button
+            onClick={() => setDark(toggleTheme())}
+            className="p-2 text-gray-600 hover:text-indigo-600 transition-colors"
+            title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-label="Toggle dark mode"
+          >
+            {dark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </button>
 
           <Link to="/cart" className="relative p-2 text-gray-700 hover:text-indigo-600 transition-colors" aria-label="Cart">
             <ShoppingCart className="w-6 h-6" />
