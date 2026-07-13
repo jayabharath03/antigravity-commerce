@@ -67,11 +67,11 @@ Stack: Spring Boot (Java) + React 19 (Vite, Redux Toolkit, Tailwind). PostgreSQL
 - [x] VERIFIED end-to-end via API on Neon: login → add to cart → /payments/order (mock) → /payments/verify → order PAID, stock decremented 25→23, total ₹2637.80.
 - [ ] OPTIONAL (later): add real Razorpay test keys and run a test-card checkout in the browser (Razorpay dashboard was down when we tried).
 
-### Phase D — Realtime layer (the headline feature)
-- [ ] Add Spring WebSocket (STOMP) config.
-- [ ] Broadcast stock changes: when stock drops, push to a `/topic/product/{id}/stock` channel; catalog & product page update live.
-- [ ] Broadcast order status: admin changes status → push to `/topic/orders/{orderId}`; customer's order page updates live without refresh.
-- [ ] Frontend: connect via `@stomp/stompjs`; show a live "only N left" badge and a live order-status tracker.
+### Phase D — Realtime layer (the headline feature) — DONE & VERIFIED
+- [x] Add Spring WebSocket (STOMP) config — endpoint `/ws`, broker `/topic` (WebSocketConfig, permitted in SecurityConfig).
+- [x] Broadcast stock changes on `/topic/stock` when an order decrements stock (RealtimeEventPublisher, hooked in CheckoutServiceImpl). VERIFIED: subscriber received `{stockQuantity:22}` on order.
+- [x] Broadcast order status on `/topic/orders/{orderNumber}` when admin updates it (hooked in OrderServiceImpl). VERIFIED: subscriber received `{status:"DELIVERED"}`.
+- [x] Frontend: `@stomp/stompjs` client (`utils/realtime.ts`); ProductDetails shows a live "Only N left" badge; OrderDetails shows a live status stepper. Both build clean.
 
 ### Phase E — Polish for showcase
 - [ ] Loading skeletons, empty states, error toasts, mobile responsiveness pass.
@@ -86,6 +86,7 @@ Stack: Spring Boot (Java) + React 19 (Vite, Redux Toolkit, Tailwind). PostgreSQL
 ---
 
 ## 4. Change Log (newest first — agent appends one line per task)
+- 2026-07-13: Phase D VERIFIED — Spring WebSocket/STOMP realtime. Live stock (/topic/stock) + live order status (/topic/orders/{no}) both confirmed end-to-end with a raw STOMP subscriber. Frontend: realtime.ts + live stock badge (ProductDetails) + live status stepper (OrderDetails). @stomp/stompjs added.
 - 2026-07-13: Phase C VERIFIED (simulated mode) — added no-account fallback (mock payment when keys absent; auto-upgrades to real Razorpay when keys set). End-to-end API test on Neon passed: order PAID + stock 25→23. User couldn't create Razorpay account (dashboard outage), so simulated mode is the current default.
 - 2026-07-12: Phase C (code) — Razorpay two-step payment: backend /payments/order + /payments/verify (HMAC signature check), Order stores razorpay refs (V6), checkout refactored so stock/order only happen after verified payment; frontend opens Razorpay popup then verifies. Backend + frontend compile. Pending live test with real test keys.
 - 2026-07-12: Phase B VERIFIED — app runs on Neon PostgreSQL, all 5 migrations applied, data persists across restart (confirmed via API). Fixed broken ProductServiceImplTest; full suite green 10/10.

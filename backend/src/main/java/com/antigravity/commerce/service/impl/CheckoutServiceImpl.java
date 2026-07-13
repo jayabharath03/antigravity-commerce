@@ -18,6 +18,7 @@ import com.antigravity.commerce.repository.ProductRepository;
 import com.antigravity.commerce.repository.ProductVariantRepository;
 import com.antigravity.commerce.repository.UserRepository;
 import com.antigravity.commerce.service.CheckoutService;
+import com.antigravity.commerce.service.RealtimeEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -40,6 +41,7 @@ public class CheckoutServiceImpl implements CheckoutService {
     private final ProductVariantRepository productVariantRepository;
     private final UserRepository userRepository;
     private final OrderMapper orderMapper;
+    private final RealtimeEventPublisher realtimeEventPublisher;
 
     private User getCurrentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -158,6 +160,14 @@ public class CheckoutServiceImpl implements CheckoutService {
 
         log.info("Placed order {} for user {} (razorpayPaymentId={})",
                 savedOrder.getOrderNumber(), user.getEmail(), razorpayPaymentId);
+
+        // Broadcast the new stock levels so every open catalog/product page updates live.
+        for (OrderItem item : orderItems) {
+            ProductVariant v = item.getVariant();
+            if (v != null) {
+                realtimeEventPublisher.publishStockUpdate(item.getProduct().getId(), v.getId(), v.getStockQuantity());
+            }
+        }
 
         return orderMapper.toDto(savedOrder);
     }

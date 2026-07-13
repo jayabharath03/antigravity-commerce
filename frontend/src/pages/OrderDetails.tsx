@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getOrderByOrderNumber } from '../api/orders';
 import type { Order } from '../api/orders';
+import { subscribe } from '../utils/realtime';
+
+const STATUS_STEPS = ['PAID', 'PACKED', 'SHIPPED', 'DELIVERED'];
 
 export const OrderDetails: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
@@ -13,6 +16,18 @@ export const OrderDetails: React.FC = () => {
     if (orderId) {
       fetchOrderDetails(orderId);
     }
+  }, [orderId]);
+
+  // Live order tracking: update the status instantly when an admin changes it.
+  useEffect(() => {
+    if (!orderId) return;
+    const unsubscribe = subscribe(
+      `/topic/orders/${orderId}`,
+      (evt: { orderNumber: string; status: string }) => {
+        setOrder((prev) => (prev ? { ...prev, status: evt.status } : prev));
+      }
+    );
+    return unsubscribe;
   }, [orderId]);
 
   const fetchOrderDetails = async (id: string) => {
@@ -46,10 +61,36 @@ export const OrderDetails: React.FC = () => {
             <h1 className="text-2xl font-bold text-gray-900 mb-1">Order #{order.orderNumber}</h1>
             <p className="text-gray-500 text-sm">Placed on {new Date(order.createdAt).toLocaleString()}</p>
           </div>
-          <span className="mt-4 md:mt-0 px-4 py-2 rounded-full text-sm font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700">
+          <span className="mt-4 md:mt-0 px-4 py-2 rounded-full text-sm font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" title="Live" />
             {order.status}
           </span>
         </div>
+
+        {/* Live order tracker — advances in realtime as the admin updates the order */}
+        {STATUS_STEPS.includes(order.status) && (
+          <div className="mb-8">
+            <div className="flex items-center">
+              {STATUS_STEPS.map((step, i) => {
+                const currentIndex = STATUS_STEPS.indexOf(order.status);
+                const done = i <= currentIndex;
+                return (
+                  <React.Fragment key={step}>
+                    <div className="flex flex-col items-center">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${done ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-400'}`}>
+                        {i + 1}
+                      </div>
+                      <span className={`mt-2 text-xs font-medium ${done ? 'text-indigo-700' : 'text-gray-400'}`}>{step}</span>
+                    </div>
+                    {i < STATUS_STEPS.length - 1 && (
+                      <div className={`flex-1 h-1 mx-2 rounded transition-colors ${i < currentIndex ? 'bg-indigo-600' : 'bg-gray-200'}`} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           <div>

@@ -8,6 +8,7 @@ import { Button } from '../components/Button';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState, AppDispatch } from '../app/store';
 import { addToCart } from '../features/cart/cartSlice';
+import { subscribe } from '../utils/realtime';
 import { Star, ArrowLeft, ShoppingCart, Check } from 'lucide-react';
 
 export const ProductDetails: React.FC = () => {
@@ -32,6 +33,26 @@ export const ProductDetails: React.FC = () => {
             loadProductAndReviews(slug);
         }
     }, [slug]);
+
+    // Live stock: update this product's stock instantly when anyone buys.
+    useEffect(() => {
+        if (!product) return;
+        const unsubscribe = subscribe(
+            '/topic/stock',
+            (evt: { productId: string; variantId: string; stockQuantity: number }) => {
+                setProduct((prev) => {
+                    if (!prev || prev.id !== evt.productId) return prev;
+                    return {
+                        ...prev,
+                        variants: prev.variants?.map((v) =>
+                            v.id === evt.variantId ? { ...v, stockQuantity: evt.stockQuantity } : v
+                        ),
+                    };
+                });
+            }
+        );
+        return unsubscribe;
+    }, [product?.id]);
 
     const loadProductAndReviews = async (productSlug: string) => {
         setLoading(true);
@@ -133,19 +154,32 @@ export const ProductDetails: React.FC = () => {
                         <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-cyan-400 mb-6">
                             ${product.variants?.[0]?.price || '0.00'}
                         </div>
+
+                        {/* Live stock indicator — updates in realtime as people buy */}
+                        {(() => {
+                            const stock = product.variants?.[0]?.stockQuantity ?? 0;
+                            if (stock <= 0) {
+                                return <div className="mb-6 inline-flex items-center gap-2 text-red-400 font-semibold"><span className="w-2 h-2 rounded-full bg-red-500" /> Out of stock</div>;
+                            }
+                            if (stock <= 5) {
+                                return <div className="mb-6 inline-flex items-center gap-2 text-amber-400 font-semibold"><span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" /> Only {stock} left — order soon!</div>;
+                            }
+                            return <div className="mb-6 inline-flex items-center gap-2 text-green-400 font-semibold"><span className="w-2 h-2 rounded-full bg-green-400" /> In stock ({stock} available)</div>;
+                        })()}
+
                         <p className="text-gray-400 text-lg mb-8 leading-relaxed">
                             {product.shortDescription}
                         </p>
-                        
+
                         <div className="flex gap-4">
-                            <Button 
-                                size="lg" 
+                            <Button
+                                size="lg"
                                 className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center gap-2"
                                 onClick={handleAddToCart}
-                                disabled={addingToCart}
+                                disabled={addingToCart || (product.variants?.[0]?.stockQuantity ?? 0) <= 0}
                             >
                                 {addingToCart ? <Check className="w-5 h-5" /> : <ShoppingCart className="w-5 h-5" />}
-                                {addingToCart ? 'Added to Cart' : 'Add to Cart'}
+                                {addingToCart ? 'Added to Cart' : (product.variants?.[0]?.stockQuantity ?? 0) <= 0 ? 'Out of Stock' : 'Add to Cart'}
                             </Button>
                         </div>
                     </div>

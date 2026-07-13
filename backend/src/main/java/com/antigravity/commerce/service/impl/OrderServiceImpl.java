@@ -6,6 +6,7 @@ import com.antigravity.commerce.entity.User;
 import com.antigravity.commerce.mapper.OrderMapper;
 import com.antigravity.commerce.repository.OrderRepository;
 import com.antigravity.commerce.service.OrderService;
+import com.antigravity.commerce.service.RealtimeEventPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +21,7 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
+    private final RealtimeEventPublisher realtimeEventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -55,7 +57,10 @@ public class OrderServiceImpl implements OrderService {
         
         order.setStatus(status);
         order = orderRepository.save(order);
-        
+
+        // Push the new status to the customer's open order page.
+        realtimeEventPublisher.publishOrderStatus(order.getOrderNumber(), order.getStatus());
+
         return orderMapper.toDto(order);
     }
 }
