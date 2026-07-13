@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getProducts, getCategories, getBrands } from '../api/catalog';
 import type { Product } from '../api/catalog';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { toast } from '../components/Toast';
 import { useDispatch, useSelector } from 'react-redux';
@@ -27,6 +27,7 @@ export const Catalog: React.FC = () => {
 
     const navigate = useNavigate();
     const dispatch = useDispatch<AppDispatch>();
+    const [searchParams] = useSearchParams();
 
     const { user } = useSelector((state: RootState) => state.auth);
 
@@ -36,6 +37,13 @@ export const Catalog: React.FC = () => {
             dispatch(fetchCart());
         }
     }, [dispatch, user]);
+
+    // Sync filters from the URL (navbar search + category bar drive these).
+    useEffect(() => {
+        setSearch(searchParams.get('search') || '');
+        setCategorySlug(searchParams.get('category') || '');
+        setBrandSlug(searchParams.get('brand') || '');
+    }, [searchParams]);
 
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {

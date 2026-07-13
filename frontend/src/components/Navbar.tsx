@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import type { RootState, AppDispatch } from '../app/store';
 import { logout } from '../features/auth/authSlice';
 import { toggleTheme, isDark } from '../utils/theme';
-import { ShoppingCart, LogOut, LayoutGrid, ChevronDown, Sun, Moon } from 'lucide-react';
+import { ShoppingCart, LogOut, LayoutGrid, ChevronDown, Sun, Moon, Search } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const navigate = useNavigate();
@@ -15,21 +15,40 @@ export const Navbar: React.FC = () => {
   const isAdmin = user?.roles?.includes('ADMIN');
   const [adminOpen, setAdminOpen] = useState(false);
   const [dark, setDark] = useState(isDark());
+  const [query, setQuery] = useState('');
 
   const handleLogout = () => {
     dispatch(logout());
     navigate('/catalog');
   };
 
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    navigate(`/catalog?search=${encodeURIComponent(query.trim())}`);
+  };
+
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <Link to="/catalog" className="flex items-center gap-2">
+        <Link to="/catalog" className="flex items-center gap-2 flex-shrink-0">
           <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center">A</div>
-          <span className="text-lg font-bold text-gray-900 tracking-tight">Antigravity</span>
+          <span className="hidden sm:inline text-lg font-bold text-gray-900 tracking-tight">Antigravity</span>
         </Link>
 
-        <nav className="flex items-center gap-1 sm:gap-2">
+        {/* Search */}
+        <form onSubmit={submitSearch} className="flex-1 max-w-md mx-4 hidden md:flex">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search products…"
+              className="w-full bg-gray-100 border border-transparent focus:bg-white focus:border-indigo-500 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        </form>
+
+        <nav className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           <Link to="/catalog" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">Shop</Link>
           {user && (
             <Link to="/my-orders" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">My Orders</Link>
