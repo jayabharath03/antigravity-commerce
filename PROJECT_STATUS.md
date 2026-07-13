@@ -73,6 +73,16 @@ Stack: Spring Boot (Java) + React 19 (Vite, Redux Toolkit, Tailwind). PostgreSQL
 - [x] Broadcast order status on `/topic/orders/{orderNumber}` when admin updates it (hooked in OrderServiceImpl). VERIFIED: subscriber received `{status:"DELIVERED"}`.
 - [x] Frontend: `@stomp/stompjs` client (`utils/realtime.ts`); ProductDetails shows a live "Only N left" badge; OrderDetails shows a live status stepper. Both build clean.
 
+### Phase E2 — Real storefront UX (from user testing feedback)
+User feedback after browser testing: ugly `alert()`s, inconsistent light/dark themes, no shared navbar, broken links, out-of-stock still addable, admin add/edit not working, "doesn't look like a real store."
+- [x] Shared **Navbar + Footer + Layout** on every page (persistent nav, cart count, account/logout, admin link).
+- [x] **Unified light theme** — converted the dark Catalog & ProductDetails to match the rest (Amazon/Flipkart-style).
+- [x] Replaced all `alert()` with clean **toasts** (`components/Toast.tsx`).
+- [x] Fixed broken links: "Start Shopping" → /catalog, "Track Order" → /orders/{id}, catch-all route → /catalog (no more blank pages).
+- [x] **Stock enforcement** on catalog: out-of-stock can't be added, low-stock/out-of-stock badges on cards; backend errors surface as toasts.
+- [ ] Admin **add/edit product** — needs backend ProductRequest to accept price/stock/image (currently base-product only), then a real form. IN PROGRESS.
+- [ ] NOTE for user: to see orders persist in Neon, run backend with the `prod` profile (SPRING_PROFILES_ACTIVE=prod + .env). Plain `mvn spring-boot:run` uses in-memory H2 (wiped on restart) — that's why Neon looked empty.
+
 ### Phase E — Polish for showcase
 - [x] Seed realistic demo data — 8 products with images, varied stock (25/15/0/5/12/4/3/50) to show in-stock, low-stock & out-of-stock badges; demo admin + customer accounts. Verified via API.
 - [x] README with feature list, tech stack, architecture, how-to-run, demo logins, API map (screenshots placeholder for user to add).

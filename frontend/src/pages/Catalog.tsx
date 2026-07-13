@@ -1,19 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { getProducts, getCategories, getBrands } from '../api/catalog';
 import type { Product } from '../api/catalog';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
+import { toast } from '../components/Toast';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState, AppDispatch } from '../app/store';
 import { addToCart, fetchCart } from '../features/cart/cartSlice';
 import { ShoppingCart, Check, Search, Filter } from 'lucide-react';
 
+const stockOf = (p: Product) => p.variants?.[0]?.stockQuantity ?? 0;
+
 export const Catalog: React.FC = () => {
     const [products, setProducts] = useState<Product[]>([]);
     const [categories, setCategories] = useState<any[]>([]);
     const [brands, setBrands] = useState<any[]>([]);
-    
-    // Filters State
+
     const [search, setSearch] = useState('');
     const [categorySlug, setCategorySlug] = useState('');
     const [brandSlug, setBrandSlug] = useState('');
@@ -22,12 +24,11 @@ export const Catalog: React.FC = () => {
 
     const [loading, setLoading] = useState(true);
     const [addingIds, setAddingIds] = useState<string[]>([]);
-    
+
     const navigate = useNavigate();
     const dispatch = useDispatch<AppDispatch>();
-    
+
     const { user } = useSelector((state: RootState) => state.auth);
-    const { items: cartItems } = useSelector((state: RootState) => state.cart);
 
     useEffect(() => {
         loadFilters();
@@ -39,7 +40,7 @@ export const Catalog: React.FC = () => {
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
             loadProducts();
-        }, 300); // debounce search
+        }, 300);
         return () => clearTimeout(delayDebounceFn);
     }, [search, categorySlug, brandSlug, minPrice, maxPrice]);
 
@@ -72,177 +73,138 @@ export const Catalog: React.FC = () => {
         }
     };
 
-    return (
-        <div className="min-h-screen bg-gray-950 text-white font-sans selection:bg-indigo-500 selection:text-white">
-            {/* Navbar */}
-            <nav className="sticky top-0 z-50 backdrop-blur-lg bg-gray-950/80 border-b border-gray-800">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-16">
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-lg shadow-lg shadow-indigo-500/20">A</div>
-                            <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">Antigravity Commerce</span>
-                        </div>
-                        <div className="flex gap-4 items-center">
-                            {user ? (
-                                <>
-                                    <Link to="/cart" className="relative p-2 text-gray-300 hover:text-white transition-colors">
-                                        <ShoppingCart className="w-6 h-6" />
-                                        {cartItems.length > 0 && (
-                                            <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-indigo-500 rounded-full">
-                                                {cartItems.length}
-                                            </span>
-                                        )}
-                                    </Link>
-                                    <Button onClick={() => navigate('/dashboard')} variant="outline" className="border-gray-700 hover:border-gray-600 text-gray-300 hover:text-white">
-                                        My Dashboard
-                                    </Button>
-                                    {user?.roles?.includes('ADMIN') && (
-                                        <Button onClick={() => navigate('/admin/products')} variant="outline" className="border-gray-700 hover:border-gray-600">Admin Panel</Button>
-                                    )}
-                                </>
-                            ) : (
-                                <Button variant="outline" onClick={() => navigate('/login')}>Sign In</Button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </nav>
+    const handleAddToCart = (product: Product) => {
+        if (!user) {
+            navigate('/login');
+            return;
+        }
+        if (stockOf(product) <= 0) {
+            toast('This item is out of stock', 'error');
+            return;
+        }
+        setAddingIds((prev) => [...prev, product.id]);
+        dispatch(addToCart({ productId: product.id, quantity: 1 }))
+            .unwrap()
+            .then(() => toast(`${product.name} added to cart`, 'success'))
+            .catch(() => toast('Could not add to cart', 'error'))
+            .finally(() => {
+                setTimeout(() => setAddingIds((prev) => prev.filter((id) => id !== product.id)), 800);
+            });
+    };
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col md:flex-row gap-8">
+    const clearFilters = () => {
+        setSearch(''); setCategorySlug(''); setBrandSlug(''); setMinPrice(''); setMaxPrice('');
+    };
+
+    return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold text-gray-900">Shop all products</h1>
+                <p className="text-gray-500 mt-1">Tech, audio, wearables and more — with live stock.</p>
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-8">
                 {/* Sidebar Filters */}
-                <aside className="w-full md:w-64 space-y-8 flex-shrink-0">
+                <aside className="w-full md:w-64 flex-shrink-0 space-y-6">
                     <div>
-                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Search className="w-5 h-5"/> Search</h3>
+                        <label className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2"><Search className="w-4 h-4" /> Search</label>
                         <input
                             type="text"
                             placeholder="Search products..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full bg-gray-900 border border-gray-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                     </div>
-                    
-                    <div>
-                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Filter className="w-5 h-5"/> Filters</h3>
-                        <div className="space-y-4">
+
+                    <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
+                        <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Filter className="w-4 h-4" /> Filters</h3>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">Category</label>
+                            <select value={categorySlug} onChange={(e) => setCategorySlug(e.target.value)}
+                                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="">All Categories</option>
+                                {categories.map((c) => <option key={c.id} value={c.slug}>{c.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">Brand</label>
+                            <select value={brandSlug} onChange={(e) => setBrandSlug(e.target.value)}
+                                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="">All Brands</option>
+                                {brands.map((b) => <option key={b.id} value={b.slug}>{b.name}</option>)}
+                            </select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">Category</label>
-                                <select 
-                                    value={categorySlug} 
-                                    onChange={(e) => setCategorySlug(e.target.value)}
-                                    className="w-full bg-gray-900 border border-gray-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                >
-                                    <option value="">All Categories</option>
-                                    {categories.map(c => (
-                                        <option key={c.id} value={c.slug}>{c.name}</option>
-                                    ))}
-                                </select>
+                                <label className="block text-xs font-medium text-gray-500 mb-1">Min $</label>
+                                <input type="number" value={minPrice} onChange={(e) => setMinPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                                    className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">Brand</label>
-                                <select 
-                                    value={brandSlug} 
-                                    onChange={(e) => setBrandSlug(e.target.value)}
-                                    className="w-full bg-gray-900 border border-gray-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                >
-                                    <option value="">All Brands</option>
-                                    {brands.map(b => (
-                                        <option key={b.id} value={b.slug}>{b.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-400 mb-1">Min $</label>
-                                    <input
-                                        type="number"
-                                        value={minPrice}
-                                        onChange={(e) => setMinPrice(e.target.value === '' ? '' : Number(e.target.value))}
-                                        className="w-full bg-gray-900 border border-gray-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-400 mb-1">Max $</label>
-                                    <input
-                                        type="number"
-                                        value={maxPrice}
-                                        onChange={(e) => setMaxPrice(e.target.value === '' ? '' : Number(e.target.value))}
-                                        className="w-full bg-gray-900 border border-gray-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                    />
-                                </div>
+                                <label className="block text-xs font-medium text-gray-500 mb-1">Max $</label>
+                                <input type="number" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                                    className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                             </div>
                         </div>
+                        <button onClick={clearFilters} className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Clear filters</button>
                     </div>
                 </aside>
 
                 {/* Product Grid */}
                 <main className="flex-1">
                     {loading ? (
-                        <div className="flex justify-center py-20">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {Array.from({ length: 6 }).map((_, i) => (
+                                <div key={i} className="bg-white rounded-2xl border border-gray-200 p-4 animate-pulse">
+                                    <div className="h-48 bg-gray-200 rounded-xl mb-4" />
+                                    <div className="h-4 bg-gray-200 rounded w-1/3 mb-2" />
+                                    <div className="h-5 bg-gray-200 rounded w-2/3" />
+                                </div>
+                            ))}
                         </div>
                     ) : products.length === 0 ? (
-                        <div className="text-center py-20 bg-gray-900/50 rounded-2xl border border-gray-800 backdrop-blur-xl">
-                            <p className="text-gray-400 text-lg">No products match your filters.</p>
-                            <Button className="mt-4 border-gray-700" variant="outline" onClick={() => {
-                                setSearch(''); setCategorySlug(''); setBrandSlug(''); setMinPrice(''); setMaxPrice('');
-                            }}>Clear Filters</Button>
+                        <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
+                            <p className="text-gray-500 text-lg">No products match your filters.</p>
+                            <Button className="mt-4" variant="outline" onClick={clearFilters}>Clear Filters</Button>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {products.map((product) => (
-                                <div key={product.id} className="group relative bg-gray-900 rounded-2xl p-4 transition-all hover:bg-gray-800 border border-gray-800 hover:border-gray-700 shadow-xl shadow-black/50 overflow-hidden flex flex-col">
-                                    <div className="aspect-h-1 aspect-w-1 w-full overflow-hidden rounded-xl bg-gray-800 lg:aspect-none group-hover:opacity-75 h-48 mb-4">
-                                        <img 
-                                            src={product.images?.[0]?.imageUrl || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1000&auto=format&fit=crop'} 
-                                            alt={product.name}
-                                            className="h-full w-full object-cover object-center lg:h-full lg:w-full transition-transform duration-500 group-hover:scale-105"
-                                        />
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider">
-                                                    {product.brand?.name || 'Generic'}
-                                                </h3>
-                                                <p className="mt-1 text-lg font-bold text-white leading-tight">
-                                                    {product.name}
-                                                </p>
+                            {products.map((product) => {
+                                const stock = stockOf(product);
+                                const out = stock <= 0;
+                                const low = stock > 0 && stock <= 5;
+                                return (
+                                    <div key={product.id} className="group bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col hover:shadow-lg transition-shadow">
+                                        <button onClick={() => navigate(`/products/${product.slug}`)} className="relative block h-52 bg-gray-100 overflow-hidden">
+                                            <img
+                                                src={product.images?.[0]?.imageUrl || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=800&auto=format&fit=crop'}
+                                                alt={product.name}
+                                                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                            />
+                                            {out && <span className="absolute top-3 left-3 bg-red-600 text-white text-xs font-semibold px-2 py-1 rounded">Out of stock</span>}
+                                            {low && <span className="absolute top-3 left-3 bg-amber-500 text-white text-xs font-semibold px-2 py-1 rounded">Only {stock} left</span>}
+                                        </button>
+                                        <div className="p-4 flex flex-col flex-1">
+                                            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">{product.brand?.name || 'Generic'}</p>
+                                            <button onClick={() => navigate(`/products/${product.slug}`)} className="text-left mt-1 text-base font-semibold text-gray-900 leading-tight hover:text-indigo-600 line-clamp-2">
+                                                {product.name}
+                                            </button>
+                                            <p className="mt-2 text-lg font-bold text-gray-900">${product.variants?.[0]?.price ?? '0.00'}</p>
+                                            <div className="mt-4 flex gap-2">
+                                                <Button variant="outline" className="flex-1" onClick={() => navigate(`/products/${product.slug}`)}>Details</Button>
+                                                <Button
+                                                    className="flex-1"
+                                                    onClick={() => handleAddToCart(product)}
+                                                    disabled={out || addingIds.includes(product.id)}
+                                                >
+                                                    {addingIds.includes(product.id) ? <Check className="w-5 h-5" /> : out ? 'Sold out' : (<><ShoppingCart className="w-4 h-4 mr-1" /> Add</>)}
+                                                </Button>
                                             </div>
-                                            <p className="text-lg font-bold text-indigo-400">
-                                                ${product.variants?.[0]?.price || '0.00'}
-                                            </p>
                                         </div>
                                     </div>
-                                    <div className="mt-4 flex gap-2">
-                                        <Button 
-                                            className="w-1/2 bg-gray-800 text-white hover:bg-gray-700 border-gray-700"
-                                            onClick={() => navigate(`/products/${product.slug}`)}
-                                        >
-                                            Details
-                                        </Button>
-                                        <Button 
-                                            className="w-1/2 bg-indigo-600 text-white hover:bg-indigo-500"
-                                            onClick={() => {
-                                                if (!user) {
-                                                    navigate('/login');
-                                                    return;
-                                                }
-                                                setAddingIds(prev => [...prev, product.id]);
-                                                dispatch(addToCart({ productId: product.id, quantity: 1 }))
-                                                    .finally(() => {
-                                                        setTimeout(() => {
-                                                            setAddingIds(prev => prev.filter(id => id !== product.id));
-                                                        }, 1000);
-                                                    });
-                                            }}
-                                            disabled={addingIds.includes(product.id)}
-                                        >
-                                            {addingIds.includes(product.id) ? <Check className="mx-auto" /> : 'Add to Cart'}
-                                        </Button>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </main>

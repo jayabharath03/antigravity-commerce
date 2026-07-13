@@ -35,8 +35,8 @@ const OrderConfirmation: React.FC = () => {
           >
             Continue Shopping
           </Button>
-          <Button 
-            onClick={() => {}} 
+          <Button
+            onClick={() => navigate(`/orders/${orderId}`)}
             variant="primary"
             className="w-full sm:w-auto"
           >

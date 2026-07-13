@@ -42,7 +42,7 @@ const Cart: React.FC = () => {
         <ShoppingBag className="w-16 h-16 mx-auto text-gray-400 mb-4" />
         <h2 className="text-2xl font-bold mb-4">Your cart is empty</h2>
         <p className="text-gray-600 mb-8">Looks like you haven't added anything to your cart yet.</p>
-        <Button onClick={() => navigate('/products')} variant="primary">Start Shopping</Button>
+        <Button onClick={() => navigate('/catalog')} variant="primary">Start Shopping</Button>
       </div>
     );
   }
