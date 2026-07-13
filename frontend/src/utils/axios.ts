@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+// Base URL is configurable for deployment; falls back to local dev.
+const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:8080/api/v1';
+
 const api = axios.create({
-  baseURL: 'http://localhost:8080/api/v1',
+  baseURL: API_BASE,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -27,7 +30,7 @@ api.interceptors.response.use(
       try {
         const refreshToken = localStorage.getItem('refreshToken');
         if (refreshToken) {
-          const res = await axios.post(`http://localhost:8080/api/v1/auth/refresh?token=${refreshToken}`);
+          const res = await axios.post(`${API_BASE}/auth/refresh?token=${refreshToken}`);
           if (res.data.success) {
             const { accessToken, refreshToken: newRefreshToken } = res.data.data;
             localStorage.setItem('accessToken', accessToken);

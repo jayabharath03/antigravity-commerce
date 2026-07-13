@@ -79,13 +79,15 @@ Stack: Spring Boot (Java) + React 19 (Vite, Redux Toolkit, Tailwind). PostgreSQL
 - [ ] (Optional) deeper UI polish: skeletons/toasts/mobile pass. App already has loading spinners + Tailwind styling; revisit if time allows.
 
 ### Phase F — Deploy (live link)
-- [ ] Dockerize backend; deploy backend + Postgres (Railway/Render).
-- [ ] Deploy frontend (Vercel/Netlify) pointing at the live API.
-- [ ] Configure CORS, env vars, HTTPS. Confirm the live link works end-to-end.
+- [x] Deploy prep (code): backend `Dockerfile`, `server.port=${PORT}`, configurable CORS (`CORS_ALLOWED_ORIGINS`), configurable frontend API/WS URLs (`VITE_API_URL`/`VITE_WS_URL`), frontend `.env.example`. Both build clean.
+- [ ] Deploy backend + point at Neon Postgres (Render/Railway). Set env: DB_*, SPRING_PROFILES_ACTIVE=prod, CORS_ALLOWED_ORIGINS, (optional RAZORPAY_*).  ← NEEDS USER account.
+- [ ] Deploy frontend (Vercel/Netlify) with VITE_API_URL + VITE_WS_URL pointing at the deployed backend.  ← NEEDS USER account.
+- [ ] Set backend CORS to the deployed frontend URL; confirm the live link works end-to-end (login, buy, realtime).
 
 ---
 
 ## 4. Change Log (newest first — agent appends one line per task)
+- 2026-07-13: Phase F prep — backend Dockerfile, server.port=${PORT}, env-driven CORS, env-driven frontend API/WS URLs + .env.example. Ready to deploy; hosting needs user accounts.
 - 2026-07-13: Phase E (core) — expanded seeder to 8 products with images + varied stock (verified 8 via API on H2), wrote full README (features/stack/architecture/run/demo logins). Optional deeper UI polish deferred.
 - 2026-07-13: Phase D VERIFIED — Spring WebSocket/STOMP realtime. Live stock (/topic/stock) + live order status (/topic/orders/{no}) both confirmed end-to-end with a raw STOMP subscriber. Frontend: realtime.ts + live stock badge (ProductDetails) + live status stepper (OrderDetails). @stomp/stompjs added.
 - 2026-07-13: Phase C VERIFIED (simulated mode) — added no-account fallback (mock payment when keys absent; auto-upgrades to real Razorpay when keys set). End-to-end API test on Neon passed: order PAID + stock 25→23. User couldn't create Razorpay account (dashboard outage), so simulated mode is the current default.
