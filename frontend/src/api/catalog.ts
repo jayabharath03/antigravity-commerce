@@ -44,3 +44,29 @@ export const getBrands = async () => {
     const response = await axios.get('/brands');
     return response.data;
 };
+
+export interface ProductInput {
+    name: string;
+    shortDescription?: string;
+    categoryId: string;
+    brandId?: string;
+    status?: string;
+    price?: number;
+    stockQuantity?: number;
+    imageUrl?: string;
+}
+
+export const createProduct = async (input: ProductInput) => {
+    const response = await axios.post('/products', input);
+    return response.data;
+};
+
+export const updateProduct = async (id: string, input: ProductInput) => {
+    const response = await axios.put(`/products/${id}`, input);
+    return response.data;
+};
+
+export const deleteProduct = async (id: string) => {
+    const response = await axios.delete(`/products/${id}`);
+    return response.data;
+};

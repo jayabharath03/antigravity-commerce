@@ -7,7 +7,9 @@ import com.antigravity.commerce.dto.ProductRequest;
 import com.antigravity.commerce.entity.Brand;
 import com.antigravity.commerce.entity.Category;
 import com.antigravity.commerce.entity.Product;
+import com.antigravity.commerce.entity.ProductImage;
 import com.antigravity.commerce.entity.ProductStatus;
+import com.antigravity.commerce.entity.ProductVariant;
 import com.antigravity.commerce.exception.BadRequestException;
 import com.antigravity.commerce.exception.ResourceNotFoundException;
 import com.antigravity.commerce.mapper.ProductMapper;
@@ -24,9 +26,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -59,6 +60,29 @@ public class ProductServiceImpl implements ProductService {
             product.setBrand(brand);
         }
 
+        if (product.getStatus() == null) {
+            product.setStatus(ProductStatus.ACTIVE);
+        }
+
+        // Create the default variant (price + stock) so the product is immediately sellable.
+        ProductVariant variant = ProductVariant.builder()
+                .product(product)
+                .sku(resolveSku(request.getSku(), slug))
+                .price(request.getPrice() != null ? request.getPrice() : BigDecimal.ZERO)
+                .stockQuantity(request.getStockQuantity() != null ? request.getStockQuantity() : 0)
+                .status(ProductStatus.ACTIVE)
+                .build();
+        product.getVariants().add(variant);
+
+        if (request.getImageUrl() != null && !request.getImageUrl().isBlank()) {
+            product.getImages().add(ProductImage.builder()
+                    .product(product)
+                    .imageUrl(request.getImageUrl())
+                    .isPrimary(true)
+                    .displayOrder(0)
+                    .build());
+        }
+
         product = productRepository.save(product);
         return productMapper.toDto(product);
     }
@@ -81,6 +105,32 @@ public class ProductServiceImpl implements ProductService {
             product.setBrand(brand);
         } else {
             product.setBrand(null);
+        }
+
+        // Update (or create) the default variant's price/stock.
+        if (request.getPrice() != null || request.getStockQuantity() != null) {
+            ProductVariant variant = product.getVariants().stream().findFirst().orElse(null);
+            if (variant == null) {
+                variant = ProductVariant.builder()
+                        .product(product)
+                        .sku(resolveSku(request.getSku(), product.getSlug()))
+                        .status(ProductStatus.ACTIVE)
+                        .build();
+                product.getVariants().add(variant);
+            }
+            if (request.getPrice() != null) variant.setPrice(request.getPrice());
+            if (request.getStockQuantity() != null) variant.setStockQuantity(request.getStockQuantity());
+        }
+
+        // Update (or add) the primary image.
+        if (request.getImageUrl() != null && !request.getImageUrl().isBlank()) {
+            ProductImage image = product.getImages().stream().findFirst().orElse(null);
+            if (image == null) {
+                product.getImages().add(ProductImage.builder()
+                        .product(product).imageUrl(request.getImageUrl()).isPrimary(true).displayOrder(0).build());
+            } else {
+                image.setImageUrl(request.getImageUrl());
+            }
         }
 
         product = productRepository.save(product);
@@ -124,5 +174,14 @@ public class ProductServiceImpl implements ProductService {
 
     private String generateSlug(String name) {
         return name.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("-$", "");
+    }
+
+    /** Use the provided SKU, or derive a unique one from the slug. */
+    private String resolveSku(String sku, String slug) {
+        if (sku != null && !sku.isBlank()) {
+            return sku.trim();
+        }
+        String base = slug.toUpperCase().replaceAll("[^A-Z0-9]", "");
+        return base + "-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
     }
 }

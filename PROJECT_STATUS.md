@@ -80,7 +80,7 @@ User feedback after browser testing: ugly `alert()`s, inconsistent light/dark th
 - [x] Replaced all `alert()` with clean **toasts** (`components/Toast.tsx`).
 - [x] Fixed broken links: "Start Shopping" → /catalog, "Track Order" → /orders/{id}, catch-all route → /catalog (no more blank pages).
 - [x] **Stock enforcement** on catalog: out-of-stock can't be added, low-stock/out-of-stock badges on cards; backend errors surface as toasts.
-- [ ] Admin **add/edit product** — needs backend ProductRequest to accept price/stock/image (currently base-product only), then a real form. IN PROGRESS.
+- [x] Admin **add/edit/delete product** — extended ProductRequest + service to create/update a default variant (price/stock) + image; new AdminProducts modal form. Fixed a bug where update nulled the NOT NULL `status` column (mapper now ignores null fields). VERIFIED end-to-end via API (create → sellable product; update persists).
 - [ ] NOTE for user: to see orders persist in Neon, run backend with the `prod` profile (SPRING_PROFILES_ACTIVE=prod + .env). Plain `mvn spring-boot:run` uses in-memory H2 (wiped on restart) — that's why Neon looked empty.
 
 ### Phase E — Polish for showcase

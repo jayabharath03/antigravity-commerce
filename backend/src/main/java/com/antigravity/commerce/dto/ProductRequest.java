@@ -8,7 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Data
@@ -39,6 +39,9 @@ public class ProductRequest {
     private Boolean returnable;
     private Integer returnDays;
 
-    // We will typically add variants through a separate endpoint or in the same payload.
-    // For simplicity, let's allow basic creation of base product first.
+    // Default variant + image fields, so the admin can create a sellable product in one form.
+    private BigDecimal price;
+    private Integer stockQuantity;
+    private String sku;
+    private String imageUrl;
 }
