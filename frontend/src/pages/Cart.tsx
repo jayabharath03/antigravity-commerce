@@ -4,7 +4,10 @@ import type { RootState, AppDispatch } from '../app/store';
 import { fetchCart, updateCartItem, removeCartItem } from '../features/cart/cartSlice';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
+import { toast } from '../components/Toast';
 import { Trash2, Minus, Plus, ShoppingBag } from 'lucide-react';
+
+const getStock = (product: any) => product?.variants?.[0]?.stockQuantity ?? 0;
 
 const Cart: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -67,13 +70,20 @@ const Cart: React.FC = () => {
   const shipping = subTotal > 100 ? 0 : 10;
   const grandTotal = subTotal + tax + shipping;
 
-  const handleUpdateQuantity = (itemId: string, currentQuantity: number, delta: number) => {
-    const newQuantity = currentQuantity + delta;
+  const handleUpdateQuantity = (item: { id: string; quantity: number; product: any }, delta: number) => {
+    const newQuantity = item.quantity + delta;
     if (newQuantity <= 0) {
-      dispatch(removeCartItem(itemId));
-    } else {
-      dispatch(updateCartItem({ itemId, quantity: newQuantity }));
+      dispatch(removeCartItem(item.id));
+      return;
     }
+    const stock = getStock(item.product);
+    if (delta > 0 && stock > 0 && newQuantity > stock) {
+      toast(`Only ${stock} in stock`, 'error');
+      return;
+    }
+    dispatch(updateCartItem({ itemId: item.id, quantity: newQuantity }))
+      .unwrap()
+      .catch((msg) => toast(typeof msg === 'string' ? msg : 'Could not update quantity', 'error'));
   };
 
   return (
@@ -104,20 +114,26 @@ const Cart: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-4">
-                <div className="flex items-center bg-gray-50 rounded-lg p-1 border border-gray-200">
-                  <button 
-                    onClick={() => handleUpdateQuantity(item.id, item.quantity, -1)}
-                    className="p-2 hover:bg-white rounded-md text-gray-600 transition-colors"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="w-8 text-center font-medium text-gray-900">{item.quantity}</span>
-                  <button 
-                    onClick={() => handleUpdateQuantity(item.id, item.quantity, 1)}
-                    className="p-2 hover:bg-white rounded-md text-gray-600 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
+                <div className="flex flex-col items-center gap-1">
+                  <div className="flex items-center bg-gray-50 rounded-lg p-1 border border-gray-200">
+                    <button
+                      onClick={() => handleUpdateQuantity(item, -1)}
+                      className="p-2 hover:bg-white rounded-md text-gray-600 transition-colors"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <span className="w-8 text-center font-medium text-gray-900">{item.quantity}</span>
+                    <button
+                      onClick={() => handleUpdateQuantity(item, 1)}
+                      disabled={getStock(item.product) > 0 && item.quantity >= getStock(item.product)}
+                      className="p-2 hover:bg-white rounded-md text-gray-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {getStock(item.product) > 0 && item.quantity >= getStock(item.product) && (
+                    <span className="text-xs text-amber-600">Max stock ({getStock(item.product)})</span>
+                  )}
                 </div>
                 <button 
                   onClick={() => dispatch(removeCartItem(item.id))}

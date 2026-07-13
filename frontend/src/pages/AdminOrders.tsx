@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { getAllOrders, updateOrderStatus } from '../api/orders';
 import type { Order } from '../api/orders';
+import { toast } from '../components/Toast';
+
+const STATUS_OPTIONS = ['PAID', 'PACKED', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
 
 export const AdminOrders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -26,12 +29,13 @@ export const AdminOrders: React.FC = () => {
     try {
       await updateOrderStatus(orderNumber, newStatus);
       // Optimistically update the UI
-      setOrders(orders.map(order => 
+      setOrders(orders.map(order =>
         order.orderNumber === orderNumber ? { ...order, status: newStatus } : order
       ));
+      toast(`Order ${orderNumber} → ${newStatus}`, 'success');
     } catch (error) {
       console.error('Error updating order status:', error);
-      alert('Failed to update status.');
+      toast('Failed to update status', 'error');
     }
   };
 
@@ -84,14 +88,9 @@ export const AdminOrders: React.FC = () => {
                     <select
                       value={order.status}
                       onChange={(e) => handleStatusChange(order.orderNumber, e.target.value)}
-                      className="text-sm border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                      className="text-sm border border-gray-300 rounded-lg px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                     >
-                      <option value="PENDING">PENDING</option>
-                      <option value="PAID">PAID</option>
-                      <option value="PROCESSING">PROCESSING</option>
-                      <option value="SHIPPED">SHIPPED</option>
-                      <option value="DELIVERED">DELIVERED</option>
-                      <option value="CANCELLED">CANCELLED</option>
+                      {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </td>
                 </tr>

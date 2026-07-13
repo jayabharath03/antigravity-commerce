@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState, AppDispatch } from '../app/store';
 import { logout } from '../features/auth/authSlice';
-import { ShoppingCart, LogOut, LayoutGrid } from 'lucide-react';
+import { ShoppingCart, LogOut, LayoutGrid, ChevronDown } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const navigate = useNavigate();
@@ -12,6 +12,7 @@ export const Navbar: React.FC = () => {
   const { items } = useSelector((s: RootState) => s.cart);
   const count = items?.reduce((n, i) => n + i.quantity, 0) || 0;
   const isAdmin = user?.roles?.includes('ADMIN');
+  const [adminOpen, setAdminOpen] = useState(false);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -32,9 +33,20 @@ export const Navbar: React.FC = () => {
             <Link to="/my-orders" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">My Orders</Link>
           )}
           {isAdmin && (
-            <Link to="/admin/products" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors flex items-center gap-1">
-              <LayoutGrid className="w-4 h-4" /> Admin
-            </Link>
+            <div className="relative" onMouseLeave={() => setAdminOpen(false)}>
+              <button
+                onClick={() => setAdminOpen((o) => !o)}
+                className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors flex items-center gap-1"
+              >
+                <LayoutGrid className="w-4 h-4" /> Admin <ChevronDown className="w-3 h-3" />
+              </button>
+              {adminOpen && (
+                <div className="absolute right-0 mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50">
+                  <Link to="/admin/products" onClick={() => setAdminOpen(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Manage Products</Link>
+                  <Link to="/admin/orders" onClick={() => setAdminOpen(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Manage Orders</Link>
+                </div>
+              )}
+            </div>
           )}
 
           <Link to="/cart" className="relative p-2 text-gray-700 hover:text-indigo-600 transition-colors" aria-label="Cart">

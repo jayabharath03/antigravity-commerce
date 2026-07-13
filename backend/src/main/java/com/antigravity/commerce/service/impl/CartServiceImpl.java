@@ -72,6 +72,9 @@ public class CartServiceImpl implements CartService {
                         && sameVariant(item.getVariant(), variant))
                 .findFirst();
 
+        int currentQty = existingItem.map(CartItem::getQuantity).orElse(0);
+        assertStock(variant, currentQty + request.getQuantity(), product.getName());
+
         if (existingItem.isPresent()) {
             existingItem.get().setQuantity(existingItem.get().getQuantity() + request.getQuantity());
         } else {
@@ -111,6 +114,20 @@ public class CartServiceImpl implements CartService {
         return a.getId().equals(b.getId());
     }
 
+    /** Reject cart quantities that exceed available stock (unless backorders are allowed). */
+    private void assertStock(ProductVariant variant, int desiredQty, String productName) {
+        if (variant != null && !Boolean.TRUE.equals(variant.getAllowBackorder())
+                && variant.getStockQuantity() < desiredQty) {
+            throw new BadRequestException("Only " + variant.getStockQuantity()
+                    + " of " + productName + " left in stock");
+        }
+    }
+
+    private ProductVariant variantOf(CartItem item) {
+        if (item.getVariant() != null) return item.getVariant();
+        return item.getProduct().getVariants().stream().findFirst().orElse(null);
+    }
+
     @Override
     @Transactional
     public CartDto updateQuantity(String itemId, Integer quantity) {
@@ -125,6 +142,7 @@ public class CartServiceImpl implements CartService {
         if (quantity <= 0) {
             cart.getItems().remove(itemToUpdate);
         } else {
+            assertStock(variantOf(itemToUpdate), quantity, itemToUpdate.getProduct().getName());
             itemToUpdate.setQuantity(quantity);
         }
 
