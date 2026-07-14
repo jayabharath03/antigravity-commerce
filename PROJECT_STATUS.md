@@ -83,6 +83,13 @@ User feedback after browser testing: ugly `alert()`s, inconsistent light/dark th
 - [x] Admin **add/edit/delete product** — extended ProductRequest + service to create/update a default variant (price/stock) + image; new AdminProducts modal form. Fixed a bug where update nulled the NOT NULL `status` column (mapper now ignores null fields). VERIFIED end-to-end via API (create → sellable product; update persists).
 - [ ] NOTE for user: to see orders persist in Neon, run backend with the `prod` profile (SPRING_PROFILES_ACTIVE=prod + .env). Plain `mvn spring-boot:run` uses in-memory H2 (wiped on restart) — that's why Neon looked empty.
 
+### Phase E3 — Feature round (user-requested)
+- [x] Stock enforcement in cart (backend + frontend): can't exceed available stock. VERIFIED.
+- [x] Admin order flow discoverable (navbar Admin dropdown → Manage Orders); statuses aligned to tracker.
+- [x] **Dark mode toggle** (navbar sun/moon, persisted; `.dark` remaps light utilities app-wide).
+- [x] **Search + category browsing** (navbar search box + CategoryBar → /catalog?search/category; Catalog reads URL params).
+- [x] **Order extras**: customer **cancel order** (restores stock + broadcasts live) + **Print Invoice** (print CSS). VERIFIED: cancel restores stock 9→12.
+
 ### Phase E — Polish for showcase
 - [x] Seed realistic demo data — 8 products with images, varied stock (25/15/0/5/12/4/3/50) to show in-stock, low-stock & out-of-stock badges; demo admin + customer accounts. Verified via API.
 - [x] README with feature list, tech stack, architecture, how-to-run, demo logins, API map (screenshots placeholder for user to add).
@@ -97,6 +104,7 @@ User feedback after browser testing: ugly `alert()`s, inconsistent light/dark th
 ---
 
 ## 4. Change Log (newest first — agent appends one line per task)
+- 2026-07-14: Phase E3 features — dark mode toggle, navbar search + category bar, order cancel (restores stock, VERIFIED 9→12) + print invoice. Earlier same batch: cart stock cap (VERIFIED), admin order dropdown + status alignment, full storefront UX overhaul (navbar/footer/light theme/toasts), admin product add/edit/delete (VERIFIED).
 - 2026-07-13: Phase F prep — backend Dockerfile, server.port=${PORT}, env-driven CORS, env-driven frontend API/WS URLs + .env.example. Ready to deploy; hosting needs user accounts.
 - 2026-07-13: Phase E (core) — expanded seeder to 8 products with images + varied stock (verified 8 via API on H2), wrote full README (features/stack/architecture/run/demo logins). Optional deeper UI polish deferred.
 - 2026-07-13: Phase D VERIFIED — Spring WebSocket/STOMP realtime. Live stock (/topic/stock) + live order status (/topic/orders/{no}) both confirmed end-to-end with a raw STOMP subscriber. Frontend: realtime.ts + live stock badge (ProductDetails) + live status stepper (OrderDetails). @stomp/stompjs added.

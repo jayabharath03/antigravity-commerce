@@ -10,4 +10,5 @@ public interface OrderService {
     OrderDto getOrderByOrderNumber(String orderNumber, User user);
     Page<OrderDto> getAllOrders(Pageable pageable);
     OrderDto updateOrderStatus(String orderNumber, String status);
+    OrderDto cancelOrder(String orderNumber, User user);
 }

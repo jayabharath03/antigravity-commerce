@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -36,5 +37,13 @@ public class OrderController {
             @AuthenticationPrincipal User user) {
         
         return ResponseEntity.ok(orderService.getOrderByOrderNumber(orderNumber, user));
+    }
+
+    @PostMapping("/{orderNumber}/cancel")
+    public ResponseEntity<OrderDto> cancelOrder(
+            @PathVariable String orderNumber,
+            @AuthenticationPrincipal User user) {
+
+        return ResponseEntity.ok(orderService.cancelOrder(orderNumber, user));
     }
 }

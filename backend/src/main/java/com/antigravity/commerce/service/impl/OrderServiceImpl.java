@@ -2,6 +2,8 @@ package com.antigravity.commerce.service.impl;
 
 import com.antigravity.commerce.dto.OrderDto;
 import com.antigravity.commerce.entity.Order;
+import com.antigravity.commerce.entity.OrderItem;
+import com.antigravity.commerce.entity.ProductVariant;
 import com.antigravity.commerce.entity.User;
 import com.antigravity.commerce.mapper.OrderMapper;
 import com.antigravity.commerce.repository.OrderRepository;
@@ -59,6 +61,40 @@ public class OrderServiceImpl implements OrderService {
         order = orderRepository.save(order);
 
         // Push the new status to the customer's open order page.
+        realtimeEventPublisher.publishOrderStatus(order.getOrderNumber(), order.getStatus());
+
+        return orderMapper.toDto(order);
+    }
+
+    @Override
+    @Transactional
+    public OrderDto cancelOrder(String orderNumber, User user) {
+        Order order = orderRepository.findByOrderNumber(orderNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        if (!order.getUser().getId().equals(user.getId())) {
+            throw new BadRequestException("You do not have permission to cancel this order.");
+        }
+
+        String status = order.getStatus();
+        if ("SHIPPED".equals(status) || "DELIVERED".equals(status)) {
+            throw new BadRequestException("This order is already " + status.toLowerCase() + " and can no longer be cancelled.");
+        }
+        if ("CANCELLED".equals(status)) {
+            throw new BadRequestException("This order is already cancelled.");
+        }
+
+        // Put the reserved stock back and push the restored levels live.
+        for (OrderItem item : order.getItems()) {
+            ProductVariant variant = item.getVariant();
+            if (variant != null) {
+                variant.setStockQuantity(variant.getStockQuantity() + item.getQuantity());
+                realtimeEventPublisher.publishStockUpdate(item.getProduct().getId(), variant.getId(), variant.getStockQuantity());
+            }
+        }
+
+        order.setStatus("CANCELLED");
+        order = orderRepository.save(order);
         realtimeEventPublisher.publishOrderStatus(order.getOrderNumber(), order.getStatus());
 
         return orderMapper.toDto(order);

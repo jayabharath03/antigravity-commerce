@@ -42,3 +42,9 @@ body {
 
 /* Keep the already-dark footer readable */
 .dark footer.bg-gray-900 { background-color: #030712 !important; }
+
+/* Print: show only the order/invoice content */
+@media print {
+  header, footer, .no-print { display: none !important; }
+  body { background: #fff !important; }
+}

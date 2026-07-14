@@ -40,6 +40,11 @@ export const getOrderByOrderNumber = async (orderNumber: string): Promise<Order>
   return response.data;
 };
 
+export const cancelOrder = async (orderNumber: string): Promise<Order> => {
+  const response = await api.post(`/orders/${orderNumber}/cancel`);
+  return response.data;
+};
+
 // Admin Endpoints
 export const getAllOrders = async (page = 0, size = 20): Promise<Page<Order>> => {
   const response = await api.get(`/admin/orders?page=${page}&size=${size}`);

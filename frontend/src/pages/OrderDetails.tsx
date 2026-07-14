@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getOrderByOrderNumber } from '../api/orders';
+import { getOrderByOrderNumber, cancelOrder } from '../api/orders';
 import type { Order } from '../api/orders';
 import { subscribe } from '../utils/realtime';
+import { toast } from '../components/Toast';
+import { Printer, XCircle } from 'lucide-react';
 
 const STATUS_STEPS = ['PAID', 'PACKED', 'SHIPPED', 'DELIVERED'];
 
@@ -10,7 +12,23 @@ export const OrderDetails: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState(false);
   const navigate = useNavigate();
+
+  const handleCancel = async () => {
+    if (!order) return;
+    if (!window.confirm('Cancel this order? Your items will be released back to stock.')) return;
+    setCancelling(true);
+    try {
+      const updated = await cancelOrder(order.orderNumber);
+      setOrder((prev) => (prev ? { ...prev, status: updated.status } : prev));
+      toast('Order cancelled', 'success');
+    } catch (err: any) {
+      toast(err.response?.data?.message || 'Could not cancel order', 'error');
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   useEffect(() => {
     if (orderId) {
@@ -52,9 +70,21 @@ export const OrderDetails: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <button onClick={() => navigate('/my-orders')} className="text-sm text-indigo-600 mb-6 hover:underline">
-        ← Back to My Orders
-      </button>
+      <div className="flex items-center justify-between mb-6 no-print">
+        <button onClick={() => navigate('/my-orders')} className="text-sm text-indigo-600 hover:underline">
+          ← Back to My Orders
+        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => window.print()} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">
+            <Printer className="w-4 h-4" /> Print Invoice
+          </button>
+          {['PAID', 'PACKED'].includes(order.status) && (
+            <button onClick={handleCancel} disabled={cancelling} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50">
+              <XCircle className="w-4 h-4" /> {cancelling ? 'Cancelling…' : 'Cancel Order'}
+            </button>
+          )}
+        </div>
+      </div>
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 border-b border-gray-100 pb-6">
           <div>
