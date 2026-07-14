@@ -113,6 +113,13 @@
             <version>1.4.8</version>
         </dependency>
 
+        <!-- Auto-loads backend/.env into Spring properties (so keys in .env just work) -->
+        <dependency>
+            <groupId>me.paulschwarz</groupId>
+            <artifactId>spring-dotenv</artifactId>
+            <version>4.0.0</version>
+        </dependency>
+
         <!-- H2 for testing and local dev -->
         <dependency>
             <groupId>com.h2database</groupId>
